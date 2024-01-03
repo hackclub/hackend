@@ -22,7 +22,7 @@ async function generateCode(uid: string) {
     }; return await h();
 }
 
-class SendLoginCodeDto { @IsEmail() email: string; }
+class SendLoginCodeDto { @IsNotEmpty() @IsEmail() email: string; }
 class LoginDto { @IsNotEmpty() uid: string; @IsNotEmpty() code: string; }
 
 async function clean_login_codes() {
