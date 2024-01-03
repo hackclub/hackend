@@ -1,14 +1,25 @@
-import { Controller, HttpCode, HttpStatus, Post, Body, UnauthorizedException } from "@nestjs/common";
+import {
+    Controller,
+    HttpCode,
+    HttpStatus,
+    Post,
+    Body,
+    UnauthorizedException,
+    NotFoundException,
+    UseGuards,
+    Request
+} from "@nestjs/common";
 import * as jose from "jose";
 import * as crypto from "crypto";
 import { db } from "./db/client.js";
-import { action, email_codes, users } from "./db/schema.js";
+import { Action, action, email_codes, projects, users } from "./db/schema.js";
 import { and, eq, sql } from "drizzle-orm";
 import env from "./env.js";
-import { login_code, mail } from "./email.js";
+import { change_email, login_code, mail } from "./email.js";
 import { IsEmail, IsNotEmpty } from "class-validator";
+import { AuthGuard, AuthRequest } from "./auth_guard.js";
 
-const jwk = await jose.importJWK(JSON.parse(env.JWK));
+export const jwk = await jose.importJWK(JSON.parse(env.JWK));
 
 async function generateCode(uid: string) {
     let h = async () : Promise<string> => {
@@ -24,6 +35,8 @@ async function generateCode(uid: string) {
 
 class SendLoginCodeDto { @IsNotEmpty() @IsEmail() email: string; }
 class LoginDto { @IsNotEmpty() uid: string; @IsNotEmpty() code: string; }
+class SendChangeEmailCodeDto { @IsNotEmpty() @IsEmail() new_email: string; }
+class ChangeEmailDto { @IsNotEmpty() code: string; }
 
 async function clean_login_codes() {
     await db.delete(email_codes).where(sql`expires < unixepoch('now')`);
@@ -32,6 +45,26 @@ async function clean_login_codes() {
 
 // noinspection JSIgnoredPromiseFromCall
 clean_login_codes();
+
+async function validate_code<T extends Action["type"]>(uid: string, code: string, type: T) {
+    const result = await db.select().from(email_codes)
+        .where(and(
+            eq(email_codes.uid, uid),
+            eq(email_codes.code, code),
+            sql`expires > unixepoch('now')`
+        ))
+        .limit(1);
+
+    if(result.length !== 1) throw new UnauthorizedException("Invalid code");
+
+    const action = JSON.parse(result[0].action_data) as Action;
+    if(action.type !== type) throw new UnauthorizedException("Invalid code");
+
+    // delete the code
+    await db.delete(email_codes).where(and(eq(email_codes.uid, uid), eq(email_codes.code, code)));
+
+    return action as Action & { type: T };
+}
 
 @Controller("auth")
 export class AuthController {
@@ -59,24 +92,50 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @Post("/login")
     async login(@Body() { uid, code }: LoginDto) {
-        // validate code
-        const result = await db.select().from(email_codes)
-            .where(and(
-                eq(email_codes.uid, uid),
-                eq(email_codes.code, code),
-                sql`expires > unixepoch('now')`
-            ))
-            .limit(1);
-
-        if(result.length !== 1) throw new UnauthorizedException("Invalid code");
-
-        // delete the code
-        await db.delete(email_codes).where(and(eq(email_codes.uid, uid), eq(email_codes.code, code)));
+        await validate_code(uid, code, "login");
 
         return await new jose.SignJWT({ "uid": uid })
             .setProtectedHeader({ alg: "HS256" })
             .setIssuedAt()
             .setExpirationTime("4w")
             .sign(jwk);
+    }
+
+    // TODO test
+    @UseGuards(AuthGuard)
+    @HttpCode(HttpStatus.OK)
+    @Post("/send_change_email_code")
+    async send_change_email_code(@Request() { uid }: AuthRequest, @Body() { new_email }: SendChangeEmailCodeDto) {
+        const userResult = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+        if(userResult.length !== 1) throw new NotFoundException("Failed to find user");
+        const { email: old_email } = userResult[0];
+        const code = await generateCode(uid);
+        const result = await db.insert(email_codes).values({
+            uid,
+            code,
+            action_data: action({ type: "change_email", new_email })
+        });
+        if(result.changes !== 1) throw new Error("Failed to insert code");
+        await mail(new_email, change_email(code, old_email, new_email));
+        return "OK";
+    }
+
+    @UseGuards(AuthGuard)
+    @HttpCode(HttpStatus.OK)
+    @Post("/change_email")
+    async change_email(@Request() { uid }: AuthRequest, @Body() { code }: ChangeEmailDto) {
+        const { new_email } = await validate_code(uid, code, "change_email");
+        const newUserResult = await db.select().from(users).where(eq(users.email, new_email)).limit(1);
+        if(newUserResult.length !== 0) {
+            // move the projects of the old account
+            const new_uid = newUserResult[0].id;
+            await db.update(projects).set({ uid: new_uid }).where(eq(projects.uid, uid));
+            // delete the old account
+            await db.delete(users).where(eq(users.id, uid));
+        } else {
+            // update the email of the user
+            await db.update(users).set({ email: new_email }).where(eq(users.id, uid));
+        }
+        return "OK";
     }
 }

@@ -35,3 +35,10 @@ export const login_code = t((code: string) => ({
     subject: `${env.PROJECT_NAME} Login Code: ${code}`,
     html: `<p>Here's your ${env.PROJECT_NAME} login code:</p><h1>${code}</h1><p><small>(Not you? You can safely ignore this email.)</small></p>`
 }));
+
+export const change_email = t((code: string, old_email: string, new_email: string) => ({
+    subject: `${env.PROJECT_NAME} Change Email Verification`,
+    html: `<p>Hi,</p>
+<p>We received a request to change the email on your ${env.PROJECT_NAME} account from ${old_email} to ${new_email}. To confirm this, enter the code <strong>${code}</strong>.</p>
+<p>If this wasn't you, you can safely ignore this email.</p>`
+}))
