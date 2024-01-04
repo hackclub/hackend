@@ -18,8 +18,15 @@ import {
     ProtocolVersion
 } from "@automerge/automerge-repo-network-websocket";
 import { ProtocolV1 } from "@automerge/automerge-repo-network-websocket/src/protocolVersion.js";
+import { check_token } from "../auth_guard.js";
 
 const { encode, decode } = cborHelpers
+
+type HackendFromClientMessage = FromClientMessage | {
+    type: "authenticate",
+    senderId: PeerId,
+    token: string
+};
 
 interface WebSocketWithIsAlive extends WebSocket {
     isAlive: boolean
@@ -27,7 +34,8 @@ interface WebSocketWithIsAlive extends WebSocket {
 
 type SocketData = {
     socket: WebSocket,
-    aliases: Record<string, string> // map of real project ID to the one that's being used by this client
+    aliases: Record<string, string>, // map of real project ID to the one that's being used by this client
+    auth: false | string // false if not authenticated, otherwise the UID
 }
 
 export class HackendWSServerAdapter extends NetworkAdapter {
@@ -47,7 +55,7 @@ export class HackendWSServerAdapter extends NetworkAdapter {
             clearInterval(interval)
         })
 
-        this.server.on("connection", (socket: WebSocketWithIsAlive) => {
+        this.server.on("connection", (socket: WebSocketWithIsAlive/*, request*/) => {
             // When a socket closes, or disconnects, remove it from our list
             socket.on("close", () => {
                 for (const [otherPeerId, { socket: otherSocket }] of Object.entries(this.sockets)) {
@@ -121,8 +129,8 @@ export class HackendWSServerAdapter extends NetworkAdapter {
         this.sockets[message.targetId]?.socket.send(arrayBuf)
     }
 
-    receiveMessage(message: Uint8Array, socket: WebSocket) {
-        const cbor: FromClientMessage = decode(message)
+    async receiveMessage(message: Uint8Array, socket: WebSocket) {
+        const cbor: HackendFromClientMessage = decode(message)
 
         const { type, senderId } = cbor
 
@@ -136,6 +144,15 @@ export class HackendWSServerAdapter extends NetworkAdapter {
             }] ${type} | ${message.byteLength} bytes`
         )
         switch (type) {
+            case "authenticate":
+            {
+                const { token } = cbor;
+                const payload = await check_token(token);
+                if(payload) {
+                    this.sockets[senderId].auth = payload.uid;
+                }
+                break;
+            }
             case "join":
             {
                 const existingSocket = this.sockets[senderId].socket
@@ -154,7 +171,8 @@ export class HackendWSServerAdapter extends NetworkAdapter {
                 })
                 this.sockets[senderId] = {
                     socket,
-                    aliases: {}
+                    aliases: {},
+                    auth: false
                 };
 
                 // In this client-server connection, there's only ever one peer: us!

@@ -38,6 +38,8 @@ class LoginDto { @IsNotEmpty() uid: string; @IsNotEmpty() code: string; }
 class SendChangeEmailCodeDto { @IsNotEmpty() @IsEmail() new_email: string; }
 class ChangeEmailDto { @IsNotEmpty() code: string; }
 
+export type HackendJWTPayload = { uid: string };
+
 async function clean_login_codes() {
     await db.delete(email_codes).where(sql`expires < unixepoch('now')`);
     setTimeout(clean_login_codes, 1000 * 60 * 60);
@@ -94,7 +96,8 @@ export class AuthController {
     async login(@Body() { uid, code }: LoginDto) {
         await validate_code(uid, code, "login");
 
-        return await new jose.SignJWT({ "uid": uid })
+        const payload: HackendJWTPayload = { uid };
+        return await new jose.SignJWT(payload)
             .setProtectedHeader({ alg: "HS256" })
             .setIssuedAt()
             .setExpirationTime("4w")

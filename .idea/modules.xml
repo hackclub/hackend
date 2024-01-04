@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/hackend.iml" filepath="$PROJECT_DIR$/.idea/hackend.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../hackend-frontend/.idea/hackend-frontend.iml" filepath="$PROJECT_DIR$/../hackend-frontend/.idea/hackend-frontend.iml" />
     </modules>
   </component>
 </project>

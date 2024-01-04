@@ -1,0 +1,28 @@
+{
+  "name": "hackend-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "rollup": "rollup -c rollup.config.mjs",
+    "dev": "ROLLUP_WATCH=true rollup -c rollup.config.mjs --watch"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "@types/react": "^18.2.46",
+    "rollup": "^4.9.2",
+    "rollup-plugin-dts": "^6.1.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.17.1",
+    "niue": "^0.2.0"
+  }
+}
