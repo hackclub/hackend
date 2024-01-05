@@ -1,20 +1,14 @@
-import { getHackendState, patchHackendState } from "./state";
-import { HackendJWTPayload } from "../../auth";
+import { decodeJWT, getHackendState, patchHackendState, useHackendState } from "./state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 const requestHeaders = (token?: string) => ({
     "Content-Type": "application/json",
     ...(token && { Authorization: `Bearer ${token}` }),
 });
 
-const decodeJWT = (token: string) : HackendJWTPayload & {
-    iat: number;
-    exp: number;
-} => JSON.parse(atob(token.split(".")[1]));
-
-// TODO: token expiration
 async function hackendFetch({ endpoint, method, body, token } : { endpoint: string, method: string, body?: any, token?: string }) {
-    const res = await fetch(getHackendState().api_url + endpoint, {
+    const res = await fetch(getHackendState().apiUrl + endpoint, {
         method,
         headers: requestHeaders(token),
         body: body ? JSON.stringify(body) : undefined
@@ -23,7 +17,7 @@ async function hackendFetch({ endpoint, method, body, token } : { endpoint: stri
     return res;
 }
 
-export async function doSendLoginCode(email: string) {
+export async function sendLoginCode(email: string) {
     const res = await hackendFetch({
         endpoint: "/auth/send_login_code",
         method: "POST",
@@ -34,28 +28,42 @@ export async function doSendLoginCode(email: string) {
     return uid;
 }
 
-export async function doLogin({ uid, code }: { uid: string, code: string }) {
+export async function login(code: string) {
     const res = await hackendFetch({
         endpoint: "/auth/login",
         method: "POST",
-        body: { uid, code }
+        body: { uid: getHackendState().uid, code }
     });
     const token = await res.text();
     patchHackendState({ token });
+    localStorage.setItem("token", token);
     return token;
+}
+
+export function logout() {
+    patchHackendState({ token: null, uid: null });
+    localStorage.removeItem("token");
 }
 
 export const useSendLoginCode = () =>
     useMutation({
-        mutationFn: doSendLoginCode
+        mutationFn: sendLoginCode
     });
 
 export const useLogin = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: doLogin,
+        mutationFn: login,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [] }); // TODO
+            queryClient.invalidateQueries({ queryKey: [] }); // TODO add queries that depend on user here
         }
     });
+};
+
+export const useUser = () => {
+    const { token } = useHackendState(["token"]);
+    return useMemo(() => {
+        if(!token) return null;
+        return decodeJWT(token);
+    }, [token]);
 };

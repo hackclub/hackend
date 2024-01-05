@@ -1,13 +1,13 @@
 import {
+    Body,
     Controller,
     HttpCode,
     HttpStatus,
-    Post,
-    Body,
-    UnauthorizedException,
     NotFoundException,
-    UseGuards,
-    Request
+    Post,
+    Request,
+    UnauthorizedException,
+    UseGuards
 } from "@nestjs/common";
 import * as jose from "jose";
 import * as crypto from "crypto";
@@ -18,6 +18,7 @@ import env from "./env.js";
 import { change_email, login_code, mail } from "./email.js";
 import { IsEmail, IsNotEmpty } from "class-validator";
 import { AuthGuard, AuthRequest } from "./auth_guard.js";
+import { HackendJWTPayload } from "./types.js";
 
 export const jwk = await jose.importJWK(JSON.parse(env.JWK));
 
@@ -37,8 +38,6 @@ class SendLoginCodeDto { @IsNotEmpty() @IsEmail() email: string; }
 class LoginDto { @IsNotEmpty() uid: string; @IsNotEmpty() code: string; }
 class SendChangeEmailCodeDto { @IsNotEmpty() @IsEmail() new_email: string; }
 class ChangeEmailDto { @IsNotEmpty() code: string; }
-
-export type HackendJWTPayload = { uid: string };
 
 async function clean_login_codes() {
     await db.delete(email_codes).where(sql`expires < unixepoch('now')`);
@@ -96,7 +95,11 @@ export class AuthController {
     async login(@Body() { uid, code }: LoginDto) {
         await validate_code(uid, code, "login");
 
-        const payload: HackendJWTPayload = { uid };
+        // get the email to put in the jwt, for convenience of the frontend
+        // we don't actually want to rely on it in the backend
+        const result = await db.select().from(users).where(eq(users.id, uid));
+
+        const payload: HackendJWTPayload = { uid, email: result[0].email };
         return await new jose.SignJWT(payload)
             .setProtectedHeader({ alg: "HS256" })
             .setIssuedAt()

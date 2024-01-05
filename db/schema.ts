@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, primaryKey, blob } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { generateAutomergeUrl, urlPrefix } from "@automerge/automerge-repo/dist/AutomergeUrl.js";
 
 export const email_codes = sqliteTable("email_codes", {
     code: text("code").notNull(),
@@ -25,7 +26,7 @@ export const users = sqliteTable("users", {
 });
 
 export const projects = sqliteTable("projects", {
-    id: text("id").primaryKey().notNull().$defaultFn(() => nanoid()),
+    id: text("id").primaryKey().notNull().$defaultFn(() => generateAutomergeUrl().replaceAll(urlPrefix, "")),
     uid: text("uid").notNull().references(() => users.id),
     automerge_url: text("automerge_url").notNull()
 });
@@ -33,7 +34,7 @@ export const projects = sqliteTable("projects", {
 export const project_aliases = sqliteTable("project_aliases", {
     id: text("id").primaryKey().notNull().$defaultFn(() => nanoid()),
     project_id: text("project_id").notNull().references(() => projects.id),
-    uid: text("uid").notNull().references(() => users.id)
+    // uid: text("uid").notNull().references(() => users.id) // huh why did I add this
 });
 
 export const automerge_storage = sqliteTable("automerge_storage", {
