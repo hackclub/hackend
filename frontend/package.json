@@ -9,6 +9,9 @@
     "dev": "ROLLUP_WATCH=true rollup -c rollup.config.mjs --watch"
   },
   "peerDependencies": {
+    "@automerge/automerge-wasm": "^0.9.0",
+    "@codemirror/state": "^6.3.0",
+    "@codemirror/view": "^6.21.3",
     "react": "^18.2.0"
   },
   "devDependencies": {
@@ -16,6 +19,7 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.1.5",
+    "@rollup/plugin-wasm": "^6.2.2",
     "@types/react": "^18.2.46",
     "rollup": "^4.9.2",
     "rollup-plugin-dts": "^6.1.0",
@@ -23,6 +27,7 @@
   },
   "dependencies": {
     "@automerge/automerge": "^2.1.10",
+    "@automerge/automerge-codemirror": "^0.0.10",
     "@automerge/automerge-repo": "1.1.0-alpha.7",
     "@automerge/automerge-repo-network-websocket": "1.1.0-alpha.7",
     "@automerge/automerge-repo-storage-indexeddb": "1.1.0-alpha.7",

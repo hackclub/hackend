@@ -2,6 +2,7 @@ import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import typescript from "@rollup/plugin-typescript";
 import { dts } from "rollup-plugin-dts";
+import { wasm } from "@rollup/plugin-wasm";
 import fs from "fs/promises";
 
 const packageJson = JSON.parse(await fs.readFile("./package.json", "utf-8"));
@@ -17,11 +18,17 @@ export default [{
         sourcemap: true
     },
     plugins: [
-        resolve(),
+        // wasm(), // for automerge
+        resolve({ browser: true }),
         commonjs(),
         typescript({ tsconfig: "./tsconfig.json" }),
     ],
-    external: ["react", "react/jsx-runtime"]
+    external: [
+        "react", "react/jsx-runtime",
+        "@automerge/automerge-wasm",
+        "@codemirror/state",
+        "@codemirror/view"
+    ]
 }, {
     // input: "dist/dts/index.d.ts",
     input: "src/index.ts",

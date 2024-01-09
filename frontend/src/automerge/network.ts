@@ -61,13 +61,25 @@ export class HackendBrowserWSClientAdapter extends WebSocketNetworkAdapter {
         this.#join();
     }
 
-    #authenticate() {
+    // #authenticate() {
+    //     const { token } = getHackendState();
+    //     if(!token) throw new Error("No token to authenticate with - maybe create a Repo instance without a network adapter?");
+    //
+    //     this.send({
+    //         type: "authenticate",
+    //         senderId: this.peerId!,
+    //         token
+    //     });
+    // }
+
+    #sendJoinMessage() {
         const { token } = getHackendState();
         if(!token) throw new Error("No token to authenticate with - maybe create a Repo instance without a network adapter?");
-
         this.send({
-            type: "authenticate",
+            type: "join",
             senderId: this.peerId!,
+            peerMetadata: this.peerMetadata!,
+            supportedProtocolVersions: ["hackend1" as ProtocolVersion],
             token
         });
     }
@@ -76,8 +88,8 @@ export class HackendBrowserWSClientAdapter extends WebSocketNetworkAdapter {
         console.info(`@ ${this.url}: open`);
         clearInterval(this.timerId);
         this.timerId = undefined;
-        this.#authenticate();
-        this.send(joinMessage(this.peerId!, this.peerMetadata!));
+        // this.#authenticate();
+        this.#sendJoinMessage();
     };
 
     // When a socket closes, or disconnects, remove it from the array.
@@ -104,8 +116,8 @@ export class HackendBrowserWSClientAdapter extends WebSocketNetworkAdapter {
             throw new Error("Can't join without a socket");
         }
         if (this.socket.readyState === WebSocket.OPEN) {
-            this.#authenticate();
-            this.send(joinMessage(this.peerId!, this.peerMetadata!));
+            // this.#authenticate();
+            this.#sendJoinMessage();
         } else {
             // The onOpen handler automatically sends a join message
         }
@@ -186,14 +198,14 @@ export class HackendBrowserWSClientAdapter extends WebSocketNetworkAdapter {
     }
 }
 
-function joinMessage(
-    senderId: PeerId,
-    peerMetadata: PeerMetadata
-): JoinMessage {
-    return {
-        type: "join",
-        senderId,
-        peerMetadata,
-        supportedProtocolVersions: ["hackend1" as ProtocolVersion]
-    };
-}
+// function joinMessage(
+//     senderId: PeerId,
+//     peerMetadata: PeerMetadata
+// ): JoinMessage {
+//     return {
+//         type: "join",
+//         senderId,
+//         peerMetadata,
+//         supportedProtocolVersions: ["hackend1" as ProtocolVersion]
+//     };
+// }

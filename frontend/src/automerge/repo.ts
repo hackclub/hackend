@@ -1,4 +1,3 @@
-import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { Repo } from "@automerge/automerge-repo";
 import { IndexedDBStorageAdapter } from "@automerge/automerge-repo-storage-indexeddb";
 import { HackendBrowserWSClientAdapter } from "./network";

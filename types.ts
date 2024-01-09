@@ -1,9 +1,5 @@
-import type { FromClientMessage } from "@automerge/automerge-repo-network-websocket";
-import type { PeerId } from "@automerge/automerge-repo";
+import type { FromClientMessage, JoinMessage } from "@automerge/automerge-repo-network-websocket";
 
 export type HackendJWTPayload = { uid: string, email: string };
-export type HackendFromClientMessage = FromClientMessage | {
-    type: "authenticate",
-    senderId: PeerId,
-    token: string
-};
+export type HackendJoinMessage = JoinMessage & { token: string };
+export type HackendFromClientMessage = Exclude<FromClientMessage, JoinMessage> | HackendJoinMessage;

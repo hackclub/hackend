@@ -105,7 +105,6 @@ export class HackendWSServerAdapter extends NetworkAdapter {
 
         //@ts-expect-error
         const documentId = message.documentId;
-        console.log("DEBUG", documentId); // TODO: ensure the documentid is in the same format as in the db
         if(documentId) {
             // fetch corresponding project ID from database
             const result = await db.select().from(projects).where(eq(projects.automerge_url, documentId));
@@ -173,8 +172,36 @@ export class HackendWSServerAdapter extends NetworkAdapter {
             }] ${type} | ${message.byteLength} bytes`
         );
 
-        if(type === "authenticate") {
-            const { token } = cbor;
+        if(type === "join") {
+            const existingSocket = this.sockets[senderId]?.socket;
+            if (existingSocket) {
+                if (existingSocket.readyState === WebSocket.OPEN) {
+                    existingSocket.close();
+                }
+                this.emit("peer-disconnected", { peerId: senderId });
+            }
+
+            this.sockets[senderId] = {
+                socket,
+                aliases: {},
+                auth: false
+            };
+
+            const selectedProtocolVersion = selectProtocol(
+                cbor.supportedProtocolVersions
+            );
+            if (selectedProtocolVersion !== ProtocolVHackend1) {
+                await this.send({
+                    type: "error",
+                    senderId: this.peerId!,
+                    message: "unsupported protocol version",
+                    targetId: senderId
+                });
+                this.#closeClientSocket(senderId);
+            }
+
+            const { peerMetadata, token } = cbor;
+            // auth
             const payload = await check_token(token);
             if (payload) {
                 this.sockets[senderId].auth = payload.uid;
@@ -189,10 +216,27 @@ export class HackendWSServerAdapter extends NetworkAdapter {
                 });
                 this.#closeClientSocket(senderId);
             }
+
+            // Let the rest of the system know that we have a new connection.
+            this.emit("peer-candidate", {
+                peerId: senderId,
+                peerMetadata
+            });
+
+            // In this client-server connection, there's only ever one peer: us!
+            // (and we pretend to be joined to every channel)
+            await this.send({
+                type: "peer",
+                senderId: this.peerId!,
+                peerMetadata: this.peerMetadata!,
+                selectedProtocolVersion: ProtocolVHackend1 as ProtocolVersion,
+                targetId: senderId
+            });
+
             return;
         }
 
-        if(!this.sockets[senderId].auth) {
+        if(!this.sockets[senderId]?.auth) {
             logger.warn(`${senderId} tried to send a message but isn't authenticated!`);
             await this.send({
                 type: "error",
@@ -205,51 +249,6 @@ export class HackendWSServerAdapter extends NetworkAdapter {
         }
 
         switch (type) {
-            case "join": {
-                const existingSocket = this.sockets[senderId].socket;
-                if (existingSocket) {
-                    if (existingSocket.readyState === WebSocket.OPEN) {
-                        existingSocket.close();
-                    }
-                    this.emit("peer-disconnected", { peerId: senderId });
-                }
-
-                const { peerMetadata } = cbor;
-                // Let the rest of the system know that we have a new connection.
-                this.emit("peer-candidate", {
-                    peerId: senderId,
-                    peerMetadata
-                });
-                this.sockets[senderId] = {
-                    socket,
-                    aliases: {},
-                    auth: false
-                };
-
-                // In this client-server connection, there's only ever one peer: us!
-                // (and we pretend to be joined to every channel)
-                const selectedProtocolVersion = selectProtocol(
-                    cbor.supportedProtocolVersions
-                );
-                if (selectedProtocolVersion !== ProtocolVHackend1) {
-                    await this.send({
-                        type: "error",
-                        senderId: this.peerId!,
-                        message: "unsupported protocol version",
-                        targetId: senderId
-                    });
-                    this.#closeClientSocket(senderId);
-                } else {
-                    await this.send({
-                        type: "peer",
-                        senderId: this.peerId!,
-                        peerMetadata: this.peerMetadata!,
-                        selectedProtocolVersion: ProtocolVHackend1 as ProtocolVersion,
-                        targetId: senderId
-                    });
-                }
-            }
-                break;
             case "leave":
                 // It doesn't seem like this gets called;
                 // we handle leaving in the socket close logic

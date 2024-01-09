@@ -25,16 +25,17 @@ export const users = sqliteTable("users", {
     email: text("email").notNull().unique()
 });
 
+const generateProjectId = () => generateAutomergeUrl().replaceAll(urlPrefix, "");
+
 export const projects = sqliteTable("projects", {
-    id: text("id").primaryKey().notNull().$defaultFn(() => generateAutomergeUrl().replaceAll(urlPrefix, "")),
-    uid: text("uid").notNull().references(() => users.id),
+    id: text("id").primaryKey().notNull().$defaultFn(generateProjectId),
+    uid: text("uid").notNull().references(() => users.id, { onDelete: "cascade" }),
     automerge_url: text("automerge_url").notNull()
 });
 
 export const project_aliases = sqliteTable("project_aliases", {
-    id: text("id").primaryKey().notNull().$defaultFn(() => nanoid()),
-    project_id: text("project_id").notNull().references(() => projects.id),
-    // uid: text("uid").notNull().references(() => users.id) // huh why did I add this
+    id: text("id").primaryKey().notNull().$defaultFn(generateProjectId),
+    project_id: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
 });
 
 export const automerge_storage = sqliteTable("automerge_storage", {
@@ -42,9 +43,9 @@ export const automerge_storage = sqliteTable("automerge_storage", {
     data: blob("data", { mode: "buffer" }).notNull()
 })
 
-export type EmailCodeRecord = typeof email_codes.$inferSelect;
-export type InsertEmailCodeRecord = typeof email_codes.$inferInsert;
-export type UserRecord = typeof users.$inferSelect;
-export type InsertUserRecord = typeof users.$inferInsert;
+// export type EmailCodeRecord = typeof email_codes.$inferSelect;
+// export type InsertEmailCodeRecord = typeof email_codes.$inferInsert;
+// export type UserRecord = typeof users.$inferSelect;
+// export type InsertUserRecord = typeof users.$inferInsert;
 // export type ProjectRecord = typeof projects.$inferSelect;
 // export type InsertProjectRecord = typeof projects.$inferInsert;

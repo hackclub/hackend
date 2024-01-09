@@ -1,21 +1,7 @@
 import { decodeJWT, getHackendState, patchHackendState, useHackendState } from "./state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-
-const requestHeaders = (token?: string) => ({
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-});
-
-async function hackendFetch({ endpoint, method, body, token } : { endpoint: string, method: string, body?: any, token?: string }) {
-    const res = await fetch(getHackendState().apiUrl + endpoint, {
-        method,
-        headers: requestHeaders(token),
-        body: body ? JSON.stringify(body) : undefined
-    });
-    if(!res.ok) throw new Error(await res.text());
-    return res;
-}
+import { hackendFetch } from "./request";
 
 export async function sendLoginCode(email: string) {
     const res = await hackendFetch({
