@@ -6,7 +6,7 @@ import {
     repo,
     amExtension,
     useAMExtension,
-    makeDispatchTransactions
+    makeDispatchTransactions, useNewAlias
 } from "../../dist";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EditorView } from "@codemirror/view";
@@ -50,6 +50,7 @@ function LoginBox() {
 function Editor() {
     const { loading, error, data, mutate } = useNewProject();
     const [docId, setDocId] = useState<string | null>(null);
+    const { loading: aliasLoading, error: aliasError, data: aliasData, mutate: aliasMutate } = useNewAlias();
 
     useEffect(() => {
         if(!data) return;
@@ -63,10 +64,14 @@ function Editor() {
 
     return (
         <>
-            <button onClick={() => mutate({ doc: "yeah!!" })}>new project</button><p>project id: {JSON.stringify(data)}</p>
+            <button onClick={() => mutate({ initial: { doc: "yeah!!" }, meta: { title: "test" } })}>new project</button><p>project id: {JSON.stringify(data)}</p>
             {error && <p>{error.message}</p>}
             {loading && <p>Loading...</p>}
             <button onClick={() => setDocId(prompt("doc id"))}>set doc id</button>
+            <button onClick={() => aliasMutate(docId)}>new alias</button>
+            {aliasError && <p>{aliasError.message}</p>}
+            {aliasLoading && <p>Loading...</p>}
+            <p>alias: {JSON.stringify(aliasData)}</p>
             <CodeMirror handle={handle} />
         </>
     )

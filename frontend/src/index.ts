@@ -5,13 +5,15 @@ export const HackendProvider = _HackendProvider;
 export { sendLoginCode, login, logout, useSendLoginCode, useLogin, useUser } from "./auth";
 export {
     newProject,
+    updateProject,
     getProject,
+    listProjects,
     deleteProject,
     newAlias,
     deleteAlias,
-    listProjects,
     listAliases,
     useNewProject,
+    useUpdateProject,
     useGetProject,
     useDeleteProject,
     useNewAlias,

@@ -1,29 +1,31 @@
 import {
     Body,
     Controller,
+    Get,
     HttpCode,
     HttpStatus,
-    Post,
-    UseGuards,
-    Request,
     NotFoundException,
-    Get, Query
+    Post,
+    Query,
+    Request,
+    UseGuards
 } from "@nestjs/common";
 import { IsNotEmpty } from "class-validator";
 import { AuthGuard, AuthRequest } from "./auth_guard.js";
 import { AutomergeGateway } from "./automerge/gateway.js";
-import { next as A } from "@automerge/automerge";
 import { db } from "./db/client.js";
 import { project_aliases, projects } from "./db/schema.js";
 import { and, eq } from "drizzle-orm";
 import { AutomergeUrl } from "@automerge/automerge-repo";
 import { urlPrefix } from "@automerge/automerge-repo/dist/AutomergeUrl.js";
+import { ProjectData } from "./types.js";
 
-class NewDto { @IsNotEmpty() initial: any; }
-class GetDto { @IsNotEmpty() id: string; }
-class DeleteDto { @IsNotEmpty() id: string; }
-class NewAliasDto { @IsNotEmpty() id: string; }
-class DeleteAliasDto { @IsNotEmpty() alias: string; }
+export class NewDto { @IsNotEmpty() initial: any; @IsNotEmpty() meta: any; }
+export class UpdateDto { @IsNotEmpty() id: string; @IsNotEmpty() meta: any; }
+export class GetDto { @IsNotEmpty() id: string; }
+export class DeleteDto { @IsNotEmpty() id: string; }
+export class NewAliasDto { @IsNotEmpty() id: string; }
+export class DeleteAliasDto { @IsNotEmpty() alias: string; }
 
 @Controller("projects")
 export class ProjectsController {
@@ -32,23 +34,35 @@ export class ProjectsController {
     @UseGuards(AuthGuard)
     @HttpCode(HttpStatus.CREATED)
     @Post("/new")
-    async new(@Request() { uid }: AuthRequest, @Body() { initial }: NewDto) {
+    async new(@Request() { uid }: AuthRequest, @Body() { initial, meta }: NewDto) {
         const docHandle = this.automerge.repo.create();
         docHandle.change((d: any) => {
             Object.assign(d, initial);
         });
         // save to db
-        const result = await db.insert(projects).values({ uid, automerge_url: docHandle.documentId })
+        const result = await db.insert(projects).values({ uid, meta: JSON.stringify(meta), automerge_url: docHandle.documentId })
             .returning({ id: projects.id });
         if (result.length !== 1) throw new Error("Failed to insert project");
         return result[0].id;
+    }
+
+    @UseGuards(AuthGuard)
+    @HttpCode(HttpStatus.OK)
+    @Post("/update")
+    async update(@Request() { uid }: AuthRequest, @Body() { id, meta }: UpdateDto) {
+        const result = await db.update(projects).set({ meta: JSON.stringify(meta) }).where(and(
+            eq(projects.id, id),
+            eq(projects.uid, uid)
+        )).returning();
+        if(result.length !== 1) throw new NotFoundException("Project not found");
+        return "OK";
     }
 
     // get project data
     // this shouldn't need to be authenticated, all projects are public read
     @HttpCode(HttpStatus.OK)
     @Get("/get")
-    async get(@Query() { id }: GetDto) {
+    async get(@Query() { id }: GetDto): Promise<ProjectData> {
         // get the automerge id
         const result = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
         if(result.length !== 1) throw new NotFoundException("Project not found");
@@ -56,15 +70,18 @@ export class ProjectsController {
         const docHandle = this.automerge.repo.find((urlPrefix + url) as AutomergeUrl);
         if(!docHandle) throw new Error("Failed to find document in Automerge, even though it exists in DB");
         const doc = await docHandle.doc();
-        return JSON.stringify(doc);
+        return {
+            id,
+            doc,
+            meta: result[0].meta
+        };
     }
 
     @UseGuards(AuthGuard)
     @HttpCode(HttpStatus.OK)
     @Get("/list")
-    async list(@Request() { uid }: AuthRequest) {
-        const result = await db.select({ id: projects.id }).from(projects).where(eq(projects.uid, uid));
-        return result.map(r => r.id);
+    async list(@Request() { uid }: AuthRequest): Promise<Omit<ProjectData, "doc">[]> {
+        return db.select({ id: projects.id, meta: projects.meta }).from(projects).where(eq(projects.uid, uid));
     }
 
     // delete project

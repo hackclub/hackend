@@ -30,6 +30,7 @@ const generateProjectId = () => generateAutomergeUrl().replaceAll(urlPrefix, "")
 export const projects = sqliteTable("projects", {
     id: text("id").primaryKey().notNull().$defaultFn(generateProjectId),
     uid: text("uid").notNull().references(() => users.id, { onDelete: "cascade" }),
+    meta: text("meta").notNull().default(JSON.stringify({})), // for storing details like project title
     automerge_url: text("automerge_url").notNull()
 });
 

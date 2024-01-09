@@ -16,7 +16,7 @@ Most likely, you'll want to use the hooks this package provides (based on TanSta
 - `useUser()`: return an object with user data (most importantly, their `uid` and `email`), or undefined if not signed in
 - `useSendLoginCode()`: this is one of many TanStack Query hooks, I highly recommend reading [that documentation](https://tanstack.com/query/latest/docs/react/guides/mutations) to understand what these return. The most important properties are `{loading, error, mutate}`, where mutate is a function that accepts an `email` string.
 - `useLogin()`: also a TanStack hook, the `mutate` property of the returned object is a function that takes a string of the code the user gets from their email and inputs. This will log the user in and set up the session stuff on the frontend.
-- There are other auth functions implemented on the server for changing a user's email - right now, there aren't hooks provided for that (`TODO`!)
+- There are other auth functions implemented on the server for changing a user's email.
 
 ### CodeMirror setup
 - Add the `amExtension` to your extensions array

@@ -26,6 +26,22 @@ export async function login(code: string) {
     return token;
 }
 
+export async function sendChangeEmailCode(new_email: string) {
+    await hackendFetch({
+        endpoint: "/auth/send_change_email_code",
+        method: "POST",
+        body: { new_email }
+    });
+}
+
+export async function changeEmail(code: string) {
+    await hackendFetch({
+        endpoint: "/auth/change_email",
+        method: "POST",
+        body: { code }
+    });
+}
+
 export function logout() {
     patchHackendState({ token: null, uid: null });
     localStorage.removeItem("token");
@@ -40,8 +56,8 @@ export const useLogin = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: login,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [] }); // TODO add queries that depend on user here
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ["projects"] });
         }
     });
 };
@@ -53,3 +69,13 @@ export const useUser = () => {
         return decodeJWT(token);
     }, [token]);
 };
+
+export const useSendChangeEmailCode = () =>
+    useMutation({
+        mutationFn: sendChangeEmailCode
+    });
+
+export const useChangeEmail = () =>
+    useMutation({
+        mutationFn: changeEmail
+    });
