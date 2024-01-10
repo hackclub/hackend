@@ -1,5 +1,5 @@
 {
-  "name": "hackend-frontend",
+  "name": "@hackclub/hackend-client",
   "version": "1.0.0",
   "type": "module",
   "module": "dist/index.js",

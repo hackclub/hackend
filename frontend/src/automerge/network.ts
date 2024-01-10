@@ -197,15 +197,3 @@ export class HackendBrowserWSClientAdapter extends WebSocketNetworkAdapter {
         }
     }
 }
-
-// function joinMessage(
-//     senderId: PeerId,
-//     peerMetadata: PeerMetadata
-// ): JoinMessage {
-//     return {
-//         type: "join",
-//         senderId,
-//         peerMetadata,
-//         supportedProtocolVersions: ["hackend1" as ProtocolVersion]
-//     };
-// }

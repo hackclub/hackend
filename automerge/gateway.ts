@@ -11,8 +11,6 @@ const logger = new Logger("AutomergeGateway");
 @WebSocketGateway()
 @Injectable()
 export class AutomergeGateway implements OnGatewayInit {
-    // @NestWebSocketServer()
-    // socket: WebSocketServer;
     repo: Repo;
     networkAdapter: HackendWSServerAdapter;
 
